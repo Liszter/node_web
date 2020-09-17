@@ -1,5 +1,6 @@
 var dbconfig = require('../utils/dbconfig')
-
+let fs = require('fs');
+let multer = require('multer');
 // 定义
 var validataPhonecode =[]
 const nodemailer = require('nodemailer');
@@ -39,6 +40,77 @@ function sendEmail(emailAddress) {
     send(mailOptions)
     return emailCode 
 }
+
+// 上传图片
+// 文件上传
+let upload = multer({
+    dest: './public/uploads/'
+  }).single('file');
+
+  
+
+uploadImage = (req, res) => {
+    if (req.file.length === 0) { //判断一下文件是否存在，也可以在前端代码中进行判断。
+      res.render("error", {
+        message: "上传文件不能为空！"
+      });
+      return
+    } else {
+  
+      let file = req.file;
+      let fileInfo = {};
+      console.log(file);
+  
+      fs.renameSync('./public/uploads/' + file.filename, './public/uploads/' + file.originalname); //这里修改文件名字，比较随意。
+  
+      // 获取文件信息
+      fileInfo.mimetype = file.mimetype;
+      fileInfo.originalname = file.originalname;
+      fileInfo.size = file.size;
+      fileInfo.path = file.path;
+  
+      // 设置响应类型及编码
+      res.set({
+        'content-type': 'application/json; charset=utf-8'
+      });
+  
+      // res.end("上传成功！");
+      let { useId } = req.query;
+  
+      let url = "http://localhost:3000/uploads/" + file.originalname;
+      let size = file.size;
+      let name = file.originalname;
+      let pid =  Math.floor(Math.random()*100000)
+      
+      let sql =  'INSERT INTO uploadImg (pid, name, size, url, useId) values (?,?,?,?,?)'
+      let sqlArr = [pid, name, size, url, useId];
+      // 
+      dbconfig.sqlConnect(sql, sqlArr, (err, data)=> {
+        if (err) {
+          console.log(err)
+          throw '出错了！'
+        } else {
+            let result = {}
+            if (data.affectedRows == 1) {
+              result = {
+                "code": 200,
+                "message": '上传成功！',
+                "url": url
+              }
+            } else {
+              result = {
+                "code": 400,
+                "message": '上传失败！'
+              }
+            }
+            res.send(result)
+    
+        }
+      })
+    }
+  }
+
+
 
 
 // 邮箱验证码发送接口
@@ -131,5 +203,6 @@ codeEmailLogin = (req, res) => {
 
 module.exports = {
     getEmailCode,
-    codeEmailLogin
+    codeEmailLogin,
+    uploadImage
 }
